@@ -306,7 +306,7 @@ const BRAND = {
   dark:[13,13,13],       // #0D0D0D
   ink:[26,18,6],         // texto sobre cobre
 };
-let LOGO_DATAURL = null;
+let LOGO_DATAURL = null, LOGO_FORMAT = 'PNG', LOGO_AR = 1;
 
 const $ = id => document.getElementById(id);
 const fmtUF = n => (n||0).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -330,6 +330,10 @@ $('logoInput').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=ev=>{
     LOGO_DATAURL=ev.target.result;
+    LOGO_FORMAT = /^data:image\/jpe?g/i.test(LOGO_DATAURL) ? 'JPEG' : 'PNG';
+    const img=new Image();
+    img.onload=()=>{ if(img.naturalHeight) LOGO_AR = img.naturalWidth/img.naturalHeight; };
+    img.src=LOGO_DATAURL;
     $('logoPreview').src=LOGO_DATAURL; $('logoPreview').style.display='block';
     $('logoHeader').src=LOGO_DATAURL; $('logoHeader').style.display='block';
     $('brandmark').style.display='none';
@@ -434,7 +438,12 @@ function buildPDF(){
   doc.setFillColor(...dark); doc.rect(0,0,W,30,'F');
   let textX=14;
   if($('incluirLogo').checked && LOGO_DATAURL){
-    try{ doc.addImage(LOGO_DATAURL,'PNG',14,7,16,16); textX=34; }catch(e){}
+    try{
+      const h=16, w=Math.min(h*(LOGO_AR||1), 78);   // respeta proporción, cap de ancho
+      const ly=(30-h)/2;                             // centrado vertical en la banda
+      doc.addImage(LOGO_DATAURL, LOGO_FORMAT, 14, ly, w, h);
+      textX = 14 + w + 6;
+    }catch(e){}
   } else {
     // wordmark tipográfico: "BROUK" cobre + subtítulo
     doc.setFont('helvetica','normal'); doc.setFontSize(19); doc.setTextColor(...copper);
