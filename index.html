@@ -257,19 +257,33 @@
     </fieldset>
 
     <fieldset>
-      <legend>Unidad / Edificio (placeholder)</legend>
+      <legend>Unidad / Edificio (catálogo demo)</legend>
+      <div class="field">
+        <label>Seleccionar unidad del catálogo</label>
+        <select id="unitSelect"></select>
+      </div>
       <div class="field">
         <label>Proyecto / Edificio</label>
         <input type="text" id="uProyecto" value="Edificio Vista Parque">
       </div>
       <div class="row">
         <div class="field">
+          <label>Comuna</label>
+          <input type="text" id="uComuna" value="Ñuñoa">
+        </div>
+        <div class="field">
           <label>Tipología</label>
           <input type="text" id="uTipologia" value="2D + 2B">
         </div>
+      </div>
+      <div class="row">
         <div class="field">
           <label>N° unidad / Piso</label>
           <input type="text" id="uPiso" value="Depto 1203 · Piso 12">
+        </div>
+        <div class="field">
+          <label>Orientación</label>
+          <input type="text" id="uOrientacion" value="Nororiente">
         </div>
       </div>
       <div class="row">
@@ -282,18 +296,12 @@
           <input type="number" id="uTerraza" value="8" min="0" step="1">
         </div>
       </div>
-      <div class="row">
-        <div class="field">
-          <label>Orientación</label>
-          <input type="text" id="uOrientacion" value="Nororiente">
-        </div>
-        <div class="field">
-          <label>Estac. / Bodega</label>
-          <input type="text" id="uExtras" value="1 estac. + bodega">
-        </div>
+      <div class="field">
+        <label>Estac. / Bodega</label>
+        <input type="text" id="uExtras" value="1 estac. + bodega">
       </div>
       <div class="field">
-        <label>Foto de la unidad <span class="sub">(placeholder aleatorio; puedes subir otra)</span></label>
+        <label>Foto de la unidad <span class="sub">(del catálogo; puedes subir otra)</span></label>
         <input type="file" id="fotoInput" accept="image/png,image/jpeg">
       </div>
     </fieldset>
@@ -402,6 +410,42 @@ let PHOTO_DATAURL = null, PHOTO_FORMAT = 'JPEG', PHOTO_AR = 1.5;
 // placeholder aleatorio de la unidad (departamento / edificio)
 const PHOTO_PLACEHOLDER = 'https://picsum.photos/seed/brouk-unidad/800/520';
 
+// ---------- Catálogo demo de unidades (placeholder) ----------
+const CATALOG = [
+  {proyecto:'Edificio Vista Parque', comuna:'Ñuñoa', tipologia:'2D + 2B', piso:'Depto 1203 · Piso 12',
+   util:58, terraza:8, orientacion:'Nororiente', extras:'1 estac. + bodega', valorUF:4000,
+   foto:'https://picsum.photos/seed/brouk-vistaparque/800/520'},
+  {proyecto:'Costanera Living', comuna:'Las Condes', tipologia:'1D + 1B', piso:'Depto 805 · Piso 8',
+   util:42, terraza:6, orientacion:'Poniente', extras:'1 estac.', valorUF:3100,
+   foto:'https://picsum.photos/seed/brouk-costanera/800/520'},
+  {proyecto:'Parque Bustamante', comuna:'Providencia', tipologia:'2D + 2B', piso:'Depto 1502 · Piso 15',
+   util:62, terraza:10, orientacion:'Nororiente', extras:'1 estac. + bodega', valorUF:4600,
+   foto:'https://picsum.photos/seed/brouk-bustamante/800/520'},
+  {proyecto:'Mirador del Río', comuna:'Vitacura', tipologia:'3D + 2B', piso:'Depto 2101 · Piso 21',
+   util:92, terraza:16, orientacion:'Norponiente', extras:'2 estac. + bodega', valorUF:7800,
+   foto:'https://picsum.photos/seed/brouk-mirador/800/520'},
+  {proyecto:'Plaza Norte Studios', comuna:'Independencia', tipologia:'Studio', piso:'Depto 410 · Piso 4',
+   util:30, terraza:4, orientacion:'Oriente', extras:'Sin estac.', valorUF:1950,
+   foto:'https://picsum.photos/seed/brouk-plazanorte/800/520'},
+];
+
+function populateCatalog(){
+  const sel=$('unitSelect');
+  sel.innerHTML='<option value="">— Personalizada / manual —</option>';
+  CATALOG.forEach((u,i)=>{ const o=document.createElement('option'); o.value=i;
+    o.textContent=`${u.proyecto} · ${u.comuna} · ${u.tipologia} · UF ${u.valorUF.toLocaleString('es-CL')}`;
+    sel.appendChild(o); });
+  sel.addEventListener('change',()=>{
+    const u=CATALOG[sel.value]; if(!u) return;
+    $('uProyecto').value=u.proyecto; $('uComuna').value=u.comuna; $('uTipologia').value=u.tipologia;
+    $('uPiso').value=u.piso; $('uUtil').value=u.util; $('uTerraza').value=u.terraza;
+    $('uOrientacion').value=u.orientacion; $('uExtras').value=u.extras; $('valorUF').value=u.valorUF;
+    $('unitPhoto').src=u.foto;
+    urlToDataURL(u.foto,(d,ar)=>{ if(d){ PHOTO_DATAURL=d; PHOTO_FORMAT='JPEG'; PHOTO_AR=ar; } });
+    calc();
+  });
+}
+
 const $ = id => document.getElementById(id);
 const fmtUF = n => (n||0).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtCLP = n => '$' + Math.round(n||0).toLocaleString('es-CL');
@@ -484,7 +528,7 @@ function unitSpecs(){
 }
 function renderUnit(){
   $('unitTitle').textContent = $('uProyecto').value.trim() || 'Unidad';
-  $('unitSub').textContent = $('uPiso').value.trim() || '';
+  $('unitSub').textContent = [$('uComuna').value.trim(), $('uPiso').value.trim()].filter(Boolean).join(' · ');
   const chips=$('unitChips'); chips.innerHTML='';
   unitSpecs().forEach(t=>{ const el=document.createElement('span'); el.className='chip'; el.textContent=t; chips.appendChild(el); });
 }
@@ -624,7 +668,8 @@ function buildPDF(){
 
   // Ficha de la unidad
   if($('incluirUnidad').checked){
-    const proyecto=$('uProyecto').value.trim(), piso=$('uPiso').value.trim(), specs=unitSpecs();
+    const proyecto=$('uProyecto').value.trim(), specs=unitSpecs();
+    const line2=[$('uComuna').value.trim(), $('uPiso').value.trim()].filter(Boolean).join(' · ');
     const photoW=55, photoH=PHOTO_DATAURL?Math.min(photoW/(PHOTO_AR||1.5),40):0;
     let infoX=14;
     if(PHOTO_DATAURL){
@@ -634,7 +679,7 @@ function buildPDF(){
     doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(30,30,30);
     if(proyecto){ doc.text(proyecto, infoX, ty); ty+=5.5; }
     doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(95,95,95);
-    if(piso){ doc.text(piso, infoX, ty); ty+=6; }
+    if(line2){ doc.text(line2, infoX, ty); ty+=6; }
     doc.setFontSize(9); doc.setTextColor(60,60,60);
     specs.forEach(s=>{ doc.text(`•  ${s}`, infoX, ty); ty+=4.8; });
     y = Math.max(y+photoH, ty) + 9;
@@ -758,8 +803,9 @@ document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input
 $('pdfBtn').addEventListener('click',genPDF);
 $('printBtn').addEventListener('click',()=>window.print());
 $('waBtn').addEventListener('click',shareWhatsApp);
-loadPlaceholderPhoto();
-calc();
+populateCatalog();
+$('unitSelect').value='0';
+$('unitSelect').dispatchEvent(new Event('change'));   // precarga la 1ª unidad del catálogo (foto + datos + calc)
 </script>
 </body>
 </html>
