@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brouk · Calculadora de Financiamiento Hipotecario</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  /* ===================================================================
+     BRAND · BROUK — Red Inmobiliaria
+     Negro + cobre + tipografía fina espaciada
+     (los valores RGB están duplicados en el objeto BRAND de JS, abajo)
+     =================================================================== */
+  :root{
+    --copper:#C0894A;       /* cobre principal */
+    --copper-lt:#D9A566;    /* cobre claro / acento */
+    --copper-dk:#9C6A34;    /* cobre oscuro */
+    --bg:#0d0d0d;           /* fondo casi negro */
+    --panel:#161616;        /* tarjetas */
+    --field:#1e1e1e;        /* inputs */
+    --text:#ededed;
+    --muted:#8f8a82;
+    --border:#2b2926;
+    --wa:#25D366;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Jost',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+  /* ---- Header / brandmark ---- */
+  header.topbar{background:linear-gradient(180deg,#000,#141210);border-bottom:1px solid var(--border);padding:22px 24px;display:flex;align-items:center;gap:18px}
+  header.topbar img.logo{height:46px;width:auto;display:none}
+  .brandmark{display:flex;flex-direction:column;gap:3px}
+  .brandmark .word{font-size:2rem;font-weight:300;letter-spacing:.34em;line-height:1;color:#fff;display:flex;align-items:baseline}
+  .brandmark .word .b{color:var(--copper);font-weight:500}
+  .brandmark .word .chev{color:var(--copper);font-weight:300;margin-left:-.1em}
+  .brandmark .sub{font-size:.6rem;font-weight:400;letter-spacing:.62em;color:var(--muted);padding-left:.34em}
+  header .tag{margin-left:auto;text-align:right;color:var(--muted);font-size:.82rem;max-width:260px;letter-spacing:.02em}
+  @media(max-width:720px){header .tag{display:none}}
+  /* ---- Layout ---- */
+  .wrap{max-width:1180px;margin:0 auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .card h2{margin:0 0 4px;font-size:1.05rem;font-weight:500;letter-spacing:.02em}
+  .card .hint{color:var(--muted);font-size:.82rem;margin:0 0 18px}
+  fieldset{border:none;padding:0;margin:0 0 20px}
+  fieldset legend{font-size:.68rem;text-transform:uppercase;letter-spacing:.18em;color:var(--copper);font-weight:600;margin-bottom:11px;padding:0}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:.8rem;font-weight:500;margin-bottom:5px;color:#cfcabf;letter-spacing:.01em}
+  .field .sub{font-weight:300;color:var(--muted)}
+  input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:9px;font-size:.95rem;background:var(--field);color:var(--text);font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  input::placeholder{color:#5f5b54}
+  input:focus,select:focus{outline:none;border-color:var(--copper);box-shadow:0 0 0 3px rgba(192,137,74,.18)}
+  input[type=file]{padding:8px;font-size:.82rem}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .toggle{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;width:100%}
+  .toggle button{flex:1;border:none;background:var(--field);padding:10px;cursor:pointer;font-size:.85rem;font-weight:500;color:var(--muted);font-family:inherit}
+  .toggle button.active{background:var(--copper);color:#1a1206}
+  .check{display:flex;align-items:center;gap:9px;font-size:.84rem;font-weight:500;color:#cfcabf;cursor:pointer;margin-top:8px}
+  .check input{width:auto;margin:0;accent-color:var(--copper)}
+  .logo-prev{display:none;margin-top:10px;height:48px;border:1px solid var(--border);border-radius:8px;padding:6px;background:#0a0a0a}
+  /* ---- Results ---- */
+  .result-hero{background:linear-gradient(135deg,#1a130a,#2a1d0d);border:1px solid var(--copper-dk);border-radius:14px;padding:24px;margin-bottom:18px;position:relative;overflow:hidden}
+  .result-hero::after{content:"«";position:absolute;right:-6px;top:-30px;font-size:9rem;color:rgba(192,137,74,.10);font-weight:300}
+  .result-hero .lbl{font-size:.72rem;color:var(--copper-lt);text-transform:uppercase;letter-spacing:.16em}
+  .result-hero .big{font-size:2.4rem;font-weight:300;letter-spacing:.02em;margin:4px 0;line-height:1;color:#fff}
+  .result-hero .big b{font-weight:600;color:var(--copper-lt)}
+  .result-hero .alt{font-size:1rem;color:#d8d2c6}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .kpi{background:var(--field);border:1px solid var(--border);border-radius:11px;padding:13px 15px}
+  .kpi .k{font-size:.72rem;color:var(--muted);font-weight:500;letter-spacing:.04em}
+  .kpi .v{font-size:1.1rem;font-weight:500;margin-top:3px}
+  .kpi .v small{font-size:.78rem;color:var(--muted);font-weight:300}
+  .breakdown{font-size:.88rem;border-top:1px dashed var(--border);padding-top:12px;margin-top:6px}
+  .breakdown .line{display:flex;justify-content:space-between;padding:4px 0}
+  .breakdown .line.total{font-weight:600;border-top:1px solid var(--border);margin-top:6px;padding-top:9px;color:var(--copper-lt)}
+  .section-title{font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--copper);margin:22px 0 9px}
+  table.t{width:100%;border-collapse:collapse;font-size:.82rem}
+  table.t th,table.t td{padding:8px;text-align:right;border-bottom:1px solid var(--border)}
+  table.t th{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;font-weight:500}
+  table.t th:first-child,table.t td:first-child{text-align:left}
+  table.t tr.sel{background:rgba(192,137,74,.14);font-weight:600;color:#fff}
+  table.t tr.sel td:first-child::after{content:" ★";color:var(--copper-lt)}
+  .scroll{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px}
+  .btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.02em;transition:filter .15s}
+  .btn.primary{background:var(--copper);color:#1a1206}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.secondary{background:transparent;color:var(--copper-lt);border:1px solid var(--copper-dk)}
+  .btn.secondary:hover{background:rgba(192,137,74,.10)}
+  .btn.wa{background:var(--wa);color:#06351c}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  .btns .full{grid-column:1/-1}
+  details.amort summary{cursor:pointer;font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--copper);padding:6px 0}
+  .footnote{font-size:.73rem;color:var(--muted);margin-top:16px;line-height:1.5}
+  .badge{display:inline-block;background:rgba(192,137,74,.16);color:var(--copper-lt);font-size:.62rem;font-weight:600;padding:3px 9px;border-radius:999px;margin-left:10px;vertical-align:middle;letter-spacing:.1em;text-transform:uppercase}
+  /* scrollbar */
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#33312d;border-radius:6px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <img id="logoHeader" class="logo" alt="logo">
+  <div class="brandmark" id="brandmark">
+    <span class="word"><span class="b">B</span>ROUK<span class="chev">«</span></span>
+    <span class="sub">RED INMOBILIARIA</span>
+  </div>
+  <div class="tag">Calculadora de financiamiento hipotecario · valores referenciales <span class="badge">Prototipo</span></div>
+</header>
+
+<div class="wrap">
+  <!-- ====================== INPUTS ====================== -->
+  <div class="card">
+    <h2>Parámetros de la cotización</h2>
+    <p class="hint">Ajusta los valores. El cálculo se actualiza en tiempo real.</p>
+
+    <fieldset>
+      <legend>Propiedad y pie</legend>
+      <div class="field">
+        <label>Valor de la propiedad <span class="sub">(UF)</span></label>
+        <input type="number" id="valorUF" value="4000" min="0" step="50">
+      </div>
+      <div class="field">
+        <label>Pie</label>
+        <div class="toggle" id="pieMode">
+          <button type="button" data-mode="pct" class="active">Porcentaje (%)</button>
+          <button type="button" data-mode="uf">Monto (UF)</button>
+        </div>
+      </div>
+      <div class="field" id="piePctField">
+        <label>Pie <span class="sub">(% del valor)</span></label>
+        <input type="number" id="piePct" value="20" min="0" max="100" step="1">
+      </div>
+      <div class="field" id="pieUFField" style="display:none">
+        <label>Pie <span class="sub">(UF)</span></label>
+        <input type="number" id="pieUF" value="800" min="0" step="10">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Condiciones del crédito</legend>
+      <div class="row">
+        <div class="field">
+          <label>Tasa de interés anual <span class="sub">(%)</span></label>
+          <input type="number" id="tasaAnual" value="4.5" min="0" step="0.05">
+        </div>
+        <div class="field">
+          <label>Plazo principal <span class="sub">(años)</span></label>
+          <input type="number" id="plazoAnios" value="25" min="1" max="40" step="1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Plazos a comparar <span class="sub">(años, separados por coma)</span></label>
+        <input type="text" id="plazosComparar" value="15, 20, 25, 30">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Seguros</legend>
+      <div class="row">
+        <div class="field">
+          <label>Desgravamen <span class="sub">(% mensual s/ saldo)</span></label>
+          <input type="number" id="segDesgravamen" value="0.03" min="0" step="0.005">
+        </div>
+        <div class="field">
+          <label>Incendio/sismo <span class="sub">(% anual s/ valor)</span></label>
+          <input type="number" id="segIncendio" value="0.2" min="0" step="0.05">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Gastos operacionales (referenciales)</legend>
+      <div class="row">
+        <div class="field">
+          <label>Tasación <span class="sub">(UF)</span></label>
+          <input type="number" id="gTasacion" value="2.5" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label>Estudio de títulos <span class="sub">(UF)</span></label>
+          <input type="number" id="gTitulos" value="5" min="0" step="0.5">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Notaría e inscripciones <span class="sub">(UF)</span></label>
+          <input type="number" id="gNotaria" value="5" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label>Impuesto al mutuo <span class="sub">(% del crédito)</span></label>
+          <input type="number" id="gImpuesto" value="0.2" min="0" step="0.05">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Conversión</legend>
+      <div class="field">
+        <label>Valor de la UF <span class="sub">(CLP)</span></label>
+        <input type="number" id="valorUFCLP" value="39000" min="0" step="100">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Datos para el documento (opcional)</legend>
+      <div class="field">
+        <label>Nombre del cliente</label>
+        <input type="text" id="cliente" placeholder="Ej: Juan Pérez">
+      </div>
+      <div class="field">
+        <label>Propiedad / referencia</label>
+        <input type="text" id="propiedad" placeholder="Ej: Depto 1203, Edificio Vista, Las Condes">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Nombre del broker</label>
+          <input type="text" id="broker" placeholder="Tu nombre">
+        </div>
+        <div class="field">
+          <label>Contacto / teléfono</label>
+          <input type="text" id="contacto" placeholder="+56 9 ...">
+        </div>
+      </div>
+      <div class="field">
+        <label>Empresa / inmobiliaria</label>
+        <input type="text" id="empresa" value="Brouk" placeholder="Ej: Brouk">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Documento (PDF)</legend>
+      <div class="field">
+        <label>Subir logo <span class="sub">(PNG/JPG, para encabezado y PDF)</span></label>
+        <input type="file" id="logoInput" accept="image/png,image/jpeg">
+        <img id="logoPreview" class="logo-prev" alt="vista previa logo">
+      </div>
+      <label class="check"><input type="checkbox" id="incluirLogo" checked> Incluir logo en el PDF</label>
+      <label class="check"><input type="checkbox" id="incluirAmort"> Incluir tabla de amortización en la cotización</label>
+    </fieldset>
+  </div>
+
+  <!-- ====================== RESULTS ====================== -->
+  <div class="card">
+    <h2>Resultado referencial</h2>
+    <p class="hint">Dividendo mensual estimado del plazo principal (incluye seguros).</p>
+
+    <div class="result-hero">
+      <div class="lbl">Dividendo mensual total · <span id="heroPlazo">–</span> años</div>
+      <div class="big"><b id="divTotalUF">–</b> UF</div>
+      <div class="alt">≈ <span id="divTotalCLP">–</span> / mes</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k">Monto del crédito</div><div class="v"><span id="montoUF">–</span> UF<br><small><span id="montoCLP">–</span></small></div></div>
+      <div class="kpi"><div class="k">Pie</div><div class="v"><span id="pieResUF">–</span> UF<br><small><span id="pieResCLP">–</span></small></div></div>
+      <div class="kpi"><div class="k">Gastos operacionales</div><div class="v"><span id="gastosUF">–</span> UF<br><small><span id="gastosCLP">–</span></small></div></div>
+      <div class="kpi"><div class="k">CAE referencial</div><div class="v"><span id="cae">–</span>%<br><small>incl. seguros y gastos</small></div></div>
+    </div>
+
+    <div class="breakdown">
+      <div class="line"><span>Dividendo (capital + interés)</span><span><strong id="divBaseUF">–</strong> UF</span></div>
+      <div class="line"><span>Seguro de desgravamen <small class="sub">(1ª cuota)</small></span><span><strong id="segDesgUF">–</strong> UF</span></div>
+      <div class="line"><span>Seguro de incendio/sismo</span><span><strong id="segIncUF">–</strong> UF</span></div>
+      <div class="line total"><span>Dividendo mensual total</span><span><span id="divTotalUF2">–</span> UF</span></div>
+    </div>
+
+    <div class="section-title">Comparación de plazos</div>
+    <table class="t" id="scenTable">
+      <thead><tr><th>Plazo</th><th>Dividendo total</th><th>≈ CLP/mes</th><th>Costo total</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <div class="btns">
+      <button class="btn wa full" id="waBtn">📲 Compartir por WhatsApp</button>
+      <button class="btn primary" id="pdfBtn">📄 Descargar PDF</button>
+      <button class="btn secondary" id="printBtn">🖨️ Imprimir</button>
+    </div>
+
+    <details class="amort" style="margin-top:18px">
+      <summary>Ver tabla de amortización (resumen anual)</summary>
+      <div class="scroll" style="margin-top:8px">
+        <table class="t" id="amortTable">
+          <thead><tr><th>Año</th><th>Capital</th><th>Interés</th><th>Seguros</th><th>Total</th><th>Saldo</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
+
+    <p class="footnote">
+      <strong>Aviso:</strong> Cálculo referencial con fines comerciales. El dividendo usa sistema francés con tasa mensual = tasa anual ÷ 12.
+      Los gastos operacionales y el CAE son estimaciones referenciales (incluyen seguros y gastos iniciales) y no constituyen una oferta de crédito.
+      Las condiciones finales dependen de la evaluación de cada institución financiera.
+    </p>
+  </div>
+</div>
+
+<script>
+// ===================================================================
+// BRAND · BROUK (sincroniza con :root del CSS)
+// ===================================================================
+const BRAND = {
+  name:'BROUK',
+  copper:[192,137,74],   // #C0894A
+  copperLt:[217,165,102],// #D9A566
+  dark:[13,13,13],       // #0D0D0D
+  ink:[26,18,6],         // texto sobre cobre
+};
+let LOGO_DATAURL = null;
+
+const $ = id => document.getElementById(id);
+const fmtUF = n => (n||0).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtCLP = n => '$' + Math.round(n||0).toLocaleString('es-CL');
+const num = id => parseFloat($(id).value)||0;
+
+let pieMode='pct', lastCalc=null;
+
+$('pieMode').querySelectorAll('button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    pieMode=b.dataset.mode;
+    $('pieMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
+    $('piePctField').style.display=pieMode==='pct'?'block':'none';
+    $('pieUFField').style.display=pieMode==='uf'?'block':'none';
+    calc();
+  });
+});
+
+$('logoInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    LOGO_DATAURL=ev.target.result;
+    $('logoPreview').src=LOGO_DATAURL; $('logoPreview').style.display='block';
+    $('logoHeader').src=LOGO_DATAURL; $('logoHeader').style.display='block';
+    $('brandmark').style.display='none';
+  };
+  r.readAsDataURL(f);
+});
+
+function getPieUF(valorUF){
+  let p=pieMode==='pct'?valorUF*(num('piePct')/100):num('pieUF');
+  return Math.min(p,valorUF);
+}
+
+function compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gastosUF){
+  const montoUF=valorUF-pieUF, n=plazo*12, i=(tasaAnual/100)/12;
+  let divBaseUF = i===0 ? (n>0?montoUF/n:0) : montoUF*i/(1-Math.pow(1+i,-n));
+  const segIncUF=valorUF*(incPct/100)/12;
+  const segDesgUF1=montoUF*(desgPct/100);
+  let saldo=montoUF; const months=[], flows=[];
+  for(let m=1;m<=n;m++){
+    const interes=saldo*i; let capital=divBaseUF-interes; if(m===n) capital=saldo;
+    const desg=saldo*(desgPct/100); saldo-=capital; if(saldo<0.0001) saldo=0;
+    months.push({m,capital,interes,desg,inc:segIncUF,saldo});
+    flows.push(divBaseUF+desg+segIncUF);
+  }
+  const totalInteres=months.reduce((s,x)=>s+x.interes,0);
+  const totalDesg=months.reduce((s,x)=>s+x.desg,0);
+  const totalInc=segIncUF*n;
+  const totalPagadoUF=montoUF+totalInteres+totalDesg+totalInc;
+  const divTotalUF=divBaseUF+segDesgUF1+segIncUF;
+  const net0=montoUF-gastosUF; let lo=0,hi=1;
+  for(let it=0;it<200;it++){ const mid=(lo+hi)/2; let npv=net0;
+    for(let k=0;k<flows.length;k++) npv-=flows[k]/Math.pow(1+mid,k+1);
+    if(npv>0) lo=mid; else hi=mid; }
+  const cae=(Math.pow(1+(lo+hi)/2,12)-1)*100;
+  return {valorUF,pieUF,montoUF,tasaAnual,plazo,n,divBaseUF,segDesgUF1,segIncUF,divTotalUF,
+          totalInteres,totalDesg,totalInc,totalPagadoUF,months,gastosUF,cae};
+}
+
+function gastosTotal(montoUF){ return num('gTasacion')+num('gTitulos')+num('gNotaria')+montoUF*(num('gImpuesto')/100); }
+
+function calc(){
+  const valorUF=num('valorUF'), tasaAnual=num('tasaAnual'),
+        plazo=parseInt($('plazoAnios').value)||1, desgPct=num('segDesgravamen'),
+        incPct=num('segIncendio'), ufClp=num('valorUFCLP');
+  const pieUF=getPieUF(valorUF), montoUF=valorUF-pieUF, gUF=gastosTotal(montoUF);
+  const c=compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gUF); c.ufClp=ufClp;
+  lastCalc=c; render(c);
+
+  let plazos=$('plazosComparar').value.split(',').map(s=>parseInt(s.trim())).filter(p=>p>0);
+  if(!plazos.includes(plazo)) plazos.push(plazo);
+  let scen=plazos.map(p=>{ const s=compute(valorUF,pieUF,tasaAnual,p,desgPct,incPct,gUF);
+    return {plazo:p,divTotalUF:s.divTotalUF,divCLP:s.divTotalUF*ufClp,totalUF:s.totalPagadoUF,sel:p===plazo}; });
+  scen.sort((a,b)=> a.sel?-1 : b.sel?1 : a.plazo-b.plazo);
+  c.scenarios=scen; renderScenarios(scen);
+}
+
+function render(c){
+  $('heroPlazo').textContent=c.plazo;
+  $('divTotalUF').textContent=fmtUF(c.divTotalUF);
+  $('divTotalUF2').textContent=fmtUF(c.divTotalUF);
+  $('divTotalCLP').textContent=fmtCLP(c.divTotalUF*c.ufClp);
+  $('montoUF').textContent=fmtUF(c.montoUF);
+  $('montoCLP').textContent=fmtCLP(c.montoUF*c.ufClp);
+  $('pieResUF').textContent=fmtUF(c.pieUF);
+  $('pieResCLP').textContent=fmtCLP(c.pieUF*c.ufClp);
+  $('gastosUF').textContent=fmtUF(c.gastosUF);
+  $('gastosCLP').textContent=fmtCLP(c.gastosUF*c.ufClp);
+  $('cae').textContent=c.cae.toFixed(2);
+  $('divBaseUF').textContent=fmtUF(c.divBaseUF);
+  $('segDesgUF').textContent=fmtUF(c.segDesgUF1);
+  $('segIncUF').textContent=fmtUF(c.segIncUF);
+  const tbody=$('amortTable').querySelector('tbody'); tbody.innerHTML='';
+  for(let y=1;y<=c.plazo;y++){
+    const slice=c.months.slice((y-1)*12,y*12); if(!slice.length) break;
+    const cap=slice.reduce((s,x)=>s+x.capital,0), int=slice.reduce((s,x)=>s+x.interes,0),
+          seg=slice.reduce((s,x)=>s+x.desg+x.inc,0);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${y}</td><td>${fmtUF(cap)}</td><td>${fmtUF(int)}</td><td>${fmtUF(seg)}</td><td>${fmtUF(cap+int+seg)}</td><td>${fmtUF(slice[slice.length-1].saldo)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderScenarios(scen){
+  const tbody=$('scenTable').querySelector('tbody'); tbody.innerHTML='';
+  scen.forEach(s=>{ const tr=document.createElement('tr'); if(s.sel) tr.className='sel';
+    tr.innerHTML=`<td>${s.plazo} años</td><td>${fmtUF(s.divTotalUF)} UF</td><td>${fmtCLP(s.divCLP)}</td><td>${fmtUF(s.totalUF)} UF</td>`;
+    tbody.appendChild(tr); });
+}
+
+// ---------- PDF ----------
+function buildPDF(){
+  const c=lastCalc; if(!c) return null;
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=doc.internal.pageSize.getWidth();
+  const copper=BRAND.copper, dark=BRAND.dark, copperLt=BRAND.copperLt;
+  const empresa=$('empresa').value.trim(), broker=$('broker').value.trim(),
+        contacto=$('contacto').value.trim(), cliente=$('cliente').value.trim(),
+        propiedad=$('propiedad').value.trim();
+
+  // Header (negro)
+  doc.setFillColor(...dark); doc.rect(0,0,W,30,'F');
+  let textX=14;
+  if($('incluirLogo').checked && LOGO_DATAURL){
+    try{ doc.addImage(LOGO_DATAURL,'PNG',14,7,16,16); textX=34; }catch(e){}
+  } else {
+    // wordmark tipográfico: "BROUK" cobre + subtítulo
+    doc.setFont('helvetica','normal'); doc.setFontSize(19); doc.setTextColor(...copper);
+    doc.text((empresa||BRAND.name).toUpperCase(),textX,15,{charSpace:2});
+    doc.setFontSize(5.5); doc.setTextColor(180,170,155);
+    doc.text('R E D   I N M O B I L I A R I A',textX,20,{charSpace:1.2});
+    textX = textX; // keep
+  }
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('Cotización hipotecaria referencial',W-14,12,{align:'right'});
+  doc.text(new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'}),W-14,18,{align:'right'});
+
+  let y=40; doc.setTextColor(30,30,30);
+  if(cliente||propiedad){
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Datos de la cotización',14,y); y+=6;
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    if(cliente){ doc.text(`Cliente: ${cliente}`,14,y); y+=5.5; }
+    if(propiedad){ const l=doc.splitTextToSize(`Propiedad: ${propiedad}`,W-28); doc.text(l,14,y); y+=5.5*l.length; }
+    y+=3;
+  }
+
+  // Hero cobre
+  doc.setFillColor(...copper); doc.roundedRect(14,y,W-28,24,3,3,'F');
+  doc.setTextColor(...BRAND.ink);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(`DIVIDENDO MENSUAL TOTAL · ${c.plazo} AÑOS`,20,y+8);
+  doc.setFont('helvetica','bold'); doc.setFontSize(20);
+  doc.text(`UF ${fmtUF(c.divTotalUF)}`,20,y+18);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11);
+  doc.text(`${fmtCLP(c.divTotalUF*c.ufClp)} / mes`,W-20,y+18,{align:'right'});
+  y+=34; doc.setTextColor(30,30,30);
+
+  doc.autoTable({
+    startY:y, head:[['Concepto','UF','CLP']],
+    body:[
+      ['Valor de la propiedad', fmtUF(c.valorUF), fmtCLP(c.valorUF*c.ufClp)],
+      ['Pie', fmtUF(c.pieUF), fmtCLP(c.pieUF*c.ufClp)],
+      ['Monto del crédito', fmtUF(c.montoUF), fmtCLP(c.montoUF*c.ufClp)],
+      ['Tasa anual / Plazo', `${c.tasaAnual}%  ·  ${c.plazo} años (${c.n} cuotas)`, ''],
+      ['Dividendo (capital + interés)', fmtUF(c.divBaseUF), fmtCLP(c.divBaseUF*c.ufClp)],
+      ['Seguro desgravamen (1ª cuota)', fmtUF(c.segDesgUF1), fmtCLP(c.segDesgUF1*c.ufClp)],
+      ['Seguro incendio/sismo', fmtUF(c.segIncUF), fmtCLP(c.segIncUF*c.ufClp)],
+      ['Gastos operacionales (ref.)', fmtUF(c.gastosUF), fmtCLP(c.gastosUF*c.ufClp)],
+      ['CAE referencial', `${c.cae.toFixed(2)}%`, ''],
+      ['Costo total del crédito', fmtUF(c.totalPagadoUF), fmtCLP(c.totalPagadoUF*c.ufClp)],
+    ],
+    theme:'striped', headStyles:{fillColor:dark,textColor:255,halign:'right'},
+    columnStyles:{0:{halign:'left',fontStyle:'bold'},1:{halign:'right'},2:{halign:'right'}},
+    styles:{fontSize:9,cellPadding:2.4}, margin:{left:14,right:14},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Comparación de plazos',14,y);
+  doc.autoTable({
+    startY:y+2, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
+    body:c.scenarios.map(s=>[`${s.plazo} años${s.sel?' ★':''}`,fmtUF(s.divTotalUF),fmtCLP(s.divCLP),fmtUF(s.totalUF)]),
+    theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8.5},
+    columnStyles:{0:{halign:'left'}},
+    didParseCell:d=>{ if(d.row.section==='body'&&c.scenarios[d.row.index].sel){ d.cell.styles.fillColor=[245,235,220]; d.cell.styles.fontStyle='bold'; } },
+    styles:{fontSize:8.5,cellPadding:2,halign:'right'}, margin:{left:14,right:14},
+  });
+  y=doc.lastAutoTable.finalY+8;
+
+  // Amortización anual — solo si se marca
+  if($('incluirAmort').checked){
+    const annual=[];
+    for(let yr=1;yr<=c.plazo;yr++){
+      const slice=c.months.slice((yr-1)*12,yr*12); if(!slice.length) break;
+      const cap=slice.reduce((s,x)=>s+x.capital,0), int=slice.reduce((s,x)=>s+x.interes,0),
+            seg=slice.reduce((s,x)=>s+x.desg+x.inc,0);
+      annual.push([yr,fmtUF(cap),fmtUF(int),fmtUF(seg),fmtUF(cap+int+seg),fmtUF(slice[slice.length-1].saldo)]);
+    }
+    if(y>235){ doc.addPage(); y=20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Amortización (resumen anual, en UF)',14,y);
+    doc.autoTable({
+      startY:y+2, head:[['Año','Capital','Interés','Seguros','Total','Saldo']], body:annual,
+      theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8},
+      columnStyles:{0:{halign:'left'}}, styles:{fontSize:7.5,cellPadding:1.6,halign:'right'},
+      margin:{left:14,right:14},
+    });
+    y=doc.lastAutoTable.finalY+8;
+  }
+
+  if(y>250){ doc.addPage(); y=20; }
+  if(broker||contacto){
+    doc.setDrawColor(...copper); doc.setLineWidth(0.4); doc.line(14,y,W-14,y); y+=6;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(30,30,30); doc.text(broker||'',14,y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(130,130,130);
+    if(contacto) doc.text(contacto,14,y+5);
+    if(empresa) doc.text(empresa,W-14,y,{align:'right'});
+  }
+  doc.setFontSize(7); doc.setTextColor(130,130,130);
+  const disc=`Valor UF utilizado: ${fmtCLP(c.ufClp)}. Cálculo referencial con fines comerciales (sistema francés, tasa mensual = tasa anual ÷ 12; CAE y gastos operacionales estimados). No constituye una oferta de crédito; las condiciones finales dependen de la evaluación de cada institución financiera.`;
+  const dl=doc.splitTextToSize(disc,W-28); doc.text(dl,14,287-dl.length*3);
+  return doc;
+}
+
+function fileName(){ const c=$('cliente').value.trim(); return `cotizacion_brouk${c?'_'+c.replace(/\s+/g,'_'):''}.pdf`; }
+function genPDF(){ const d=buildPDF(); if(d) d.save(fileName()); }
+
+async function shareWhatsApp(){
+  const c=lastCalc; if(!c) return;
+  const doc=buildPDF(); if(!doc) return;
+  const empresa=$('empresa').value.trim()||BRAND.name, cliente=$('cliente').value.trim();
+  const resumen=`*${empresa} · Cotización hipotecaria*\n`+(cliente?`Cliente: ${cliente}\n`:``)+
+    `\nValor propiedad: UF ${fmtUF(c.valorUF)}`+`\nPie: UF ${fmtUF(c.pieUF)}`+
+    `\nCrédito: UF ${fmtUF(c.montoUF)}`+`\nTasa: ${c.tasaAnual}% · ${c.plazo} años`+
+    `\n*Dividendo mensual: UF ${fmtUF(c.divTotalUF)} (${fmtCLP(c.divTotalUF*c.ufClp)})*`+
+    `\nCAE referencial: ${c.cae.toFixed(2)}%`+
+    `\n\n_Valores referenciales, no constituyen oferta de crédito._`;
+  try{
+    const blob=doc.output('blob');
+    const file=new File([blob],fileName(),{type:'application/pdf'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'Cotización hipotecaria',text:resumen}); return;
+    }
+  }catch(e){}
+  doc.save(fileName());
+  window.open('https://wa.me/?text='+encodeURIComponent(resumen),'_blank');
+}
+
+document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',calc));
+$('pdfBtn').addEventListener('click',genPDF);
+$('printBtn').addEventListener('click',()=>window.print());
+$('waBtn').addEventListener('click',shareWhatsApp);
+calc();
+</script>
+</body>
+</html>
