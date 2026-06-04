@@ -138,6 +138,21 @@
         <label>Pie <span class="sub">(UF)</span></label>
         <input type="number" id="pieUF" value="800" min="0" step="10">
       </div>
+      <div class="field">
+        <label>Bono pie <span class="sub">(aporte inmobiliaria al pie)</span></label>
+        <div class="toggle" id="bonoMode">
+          <button type="button" data-mode="uf" class="active">Monto (UF)</button>
+          <button type="button" data-mode="pct">Porcentaje (%)</button>
+        </div>
+      </div>
+      <div class="field" id="bonoUFField">
+        <label>Bono pie <span class="sub">(UF)</span></label>
+        <input type="number" id="bonoPieUF" value="0" min="0" step="10">
+      </div>
+      <div class="field" id="bonoPctField" style="display:none">
+        <label>Bono pie <span class="sub">(% del valor)</span></label>
+        <input type="number" id="bonoPiePct" value="0" min="0" max="100" step="1">
+      </div>
     </fieldset>
 
     <fieldset>
@@ -255,7 +270,7 @@
 
     <div class="kpis">
       <div class="kpi"><div class="k">Monto del crédito</div><div class="v"><span id="montoUF">–</span> UF<br><small><span id="montoCLP">–</span></small></div></div>
-      <div class="kpi"><div class="k">Pie</div><div class="v"><span id="pieResUF">–</span> UF<br><small><span id="pieResCLP">–</span></small></div></div>
+      <div class="kpi"><div class="k">Pie efectivo (cliente)</div><div class="v"><span id="pieResUF">–</span> UF<br><small><span id="pieResCLP">–</span> · bono <span id="bonoResUF">0,00</span> UF</small></div></div>
       <div class="kpi"><div class="k">Gastos operacionales</div><div class="v"><span id="gastosUF">–</span> UF<br><small><span id="gastosCLP">–</span></small></div></div>
       <div class="kpi"><div class="k">CAE referencial</div><div class="v"><span id="cae">–</span>%<br><small>incl. seguros y gastos</small></div></div>
     </div>
@@ -324,7 +339,7 @@ const fmtUF = n => (n||0).toLocaleString('es-CL',{minimumFractionDigits:2,maximu
 const fmtCLP = n => '$' + Math.round(n||0).toLocaleString('es-CL');
 const num = id => parseFloat($(id).value)||0;
 
-let pieMode='pct', lastCalc=null;
+let pieMode='pct', bonoMode='uf', lastCalc=null;
 
 $('pieMode').querySelectorAll('button').forEach(b=>{
   b.addEventListener('click',()=>{
@@ -332,6 +347,16 @@ $('pieMode').querySelectorAll('button').forEach(b=>{
     $('pieMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
     $('piePctField').style.display=pieMode==='pct'?'block':'none';
     $('pieUFField').style.display=pieMode==='uf'?'block':'none';
+    calc();
+  });
+});
+
+$('bonoMode').querySelectorAll('button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    bonoMode=b.dataset.mode;
+    $('bonoMode').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));
+    $('bonoPctField').style.display=bonoMode==='pct'?'block':'none';
+    $('bonoUFField').style.display=bonoMode==='uf'?'block':'none';
     calc();
   });
 });
@@ -355,6 +380,11 @@ $('logoInput').addEventListener('change',e=>{
 function getPieUF(valorUF){
   let p=pieMode==='pct'?valorUF*(num('piePct')/100):num('pieUF');
   return Math.min(p,valorUF);
+}
+
+function getBonoUF(valorUF,pieUF){
+  let b=bonoMode==='pct'?valorUF*(num('bonoPiePct')/100):num('bonoPieUF');
+  return Math.max(0,Math.min(b,pieUF));   // el bono no puede superar el pie
 }
 
 function compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gastosUF){
@@ -390,7 +420,9 @@ function calc(){
         plazo=parseInt($('plazoAnios').value)||1, desgPct=num('segDesgravamen'),
         incPct=num('segIncendio'), ufClp=num('valorUFCLP');
   const pieUF=getPieUF(valorUF), montoUF=valorUF-pieUF, gUF=gastosTotal(montoUF);
-  const c=compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gUF); c.ufClp=ufClp;
+  const bonoUF=getBonoUF(valorUF,pieUF), pieEfectivoUF=Math.max(0,pieUF-bonoUF);
+  const c=compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gUF);
+  c.ufClp=ufClp; c.bonoUF=bonoUF; c.pieEfectivoUF=pieEfectivoUF;
   lastCalc=c; render(c);
 
   let plazos=$('plazosComparar').value.split(',').map(s=>parseInt(s.trim())).filter(p=>p>0);
@@ -408,8 +440,9 @@ function render(c){
   $('divTotalCLP').textContent=fmtCLP(c.divTotalUF*c.ufClp);
   $('montoUF').textContent=fmtUF(c.montoUF);
   $('montoCLP').textContent=fmtCLP(c.montoUF*c.ufClp);
-  $('pieResUF').textContent=fmtUF(c.pieUF);
-  $('pieResCLP').textContent=fmtCLP(c.pieUF*c.ufClp);
+  $('pieResUF').textContent=fmtUF(c.pieEfectivoUF);
+  $('pieResCLP').textContent=fmtCLP(c.pieEfectivoUF*c.ufClp);
+  $('bonoResUF').textContent=fmtUF(c.bonoUF);
   $('gastosUF').textContent=fmtUF(c.gastosUF);
   $('gastosCLP').textContent=fmtCLP(c.gastosUF*c.ufClp);
   $('cae').textContent=c.cae.toFixed(2);
@@ -488,20 +521,26 @@ function buildPDF(){
   doc.text(`${fmtCLP(c.divTotalUF*c.ufClp)} / mes`,W-20,y+18,{align:'right'});
   y+=34; doc.setTextColor(30,30,30);
 
+  const sumBody=[
+    ['Valor de la propiedad', fmtUF(c.valorUF), fmtCLP(c.valorUF*c.ufClp)],
+    ['Pie', fmtUF(c.pieUF), fmtCLP(c.pieUF*c.ufClp)],
+  ];
+  if(c.bonoUF>0){
+    sumBody.push(['Bono pie (aporte inmobiliaria)', '-'+fmtUF(c.bonoUF), '-'+fmtCLP(c.bonoUF*c.ufClp)]);
+    sumBody.push(['Pie efectivo (paga el cliente)', fmtUF(c.pieEfectivoUF), fmtCLP(c.pieEfectivoUF*c.ufClp)]);
+  }
+  sumBody.push(
+    ['Monto del crédito', fmtUF(c.montoUF), fmtCLP(c.montoUF*c.ufClp)],
+    ['Tasa anual / Plazo', `${c.tasaAnual}%  ·  ${c.plazo} años (${c.n} cuotas)`, ''],
+    ['Dividendo (capital + interés)', fmtUF(c.divBaseUF), fmtCLP(c.divBaseUF*c.ufClp)],
+    ['Seguro desgravamen (1ª cuota)', fmtUF(c.segDesgUF1), fmtCLP(c.segDesgUF1*c.ufClp)],
+    ['Seguro incendio/sismo', fmtUF(c.segIncUF), fmtCLP(c.segIncUF*c.ufClp)],
+    ['Gastos operacionales (ref.)', fmtUF(c.gastosUF), fmtCLP(c.gastosUF*c.ufClp)],
+    ['CAE referencial', `${c.cae.toFixed(2)}%`, ''],
+    ['Costo total del crédito', fmtUF(c.totalPagadoUF), fmtCLP(c.totalPagadoUF*c.ufClp)],
+  );
   doc.autoTable({
-    startY:y, head:[['Concepto','UF','CLP']],
-    body:[
-      ['Valor de la propiedad', fmtUF(c.valorUF), fmtCLP(c.valorUF*c.ufClp)],
-      ['Pie', fmtUF(c.pieUF), fmtCLP(c.pieUF*c.ufClp)],
-      ['Monto del crédito', fmtUF(c.montoUF), fmtCLP(c.montoUF*c.ufClp)],
-      ['Tasa anual / Plazo', `${c.tasaAnual}%  ·  ${c.plazo} años (${c.n} cuotas)`, ''],
-      ['Dividendo (capital + interés)', fmtUF(c.divBaseUF), fmtCLP(c.divBaseUF*c.ufClp)],
-      ['Seguro desgravamen (1ª cuota)', fmtUF(c.segDesgUF1), fmtCLP(c.segDesgUF1*c.ufClp)],
-      ['Seguro incendio/sismo', fmtUF(c.segIncUF), fmtCLP(c.segIncUF*c.ufClp)],
-      ['Gastos operacionales (ref.)', fmtUF(c.gastosUF), fmtCLP(c.gastosUF*c.ufClp)],
-      ['CAE referencial', `${c.cae.toFixed(2)}%`, ''],
-      ['Costo total del crédito', fmtUF(c.totalPagadoUF), fmtCLP(c.totalPagadoUF*c.ufClp)],
-    ],
+    startY:y, head:[['Concepto','UF','CLP']], body:sumBody,
     theme:'striped', headStyles:{fillColor:dark,textColor:255,halign:'right'},
     columnStyles:{0:{halign:'left',fontStyle:'bold'},1:{halign:'right'},2:{halign:'right'}},
     styles:{fontSize:9,cellPadding:2.4}, margin:{left:14,right:14},
@@ -562,6 +601,7 @@ async function shareWhatsApp(){
   const empresa=$('empresa').value.trim()||BRAND.name, cliente=$('cliente').value.trim();
   const resumen=`*${empresa} · Cotización hipotecaria*\n`+(cliente?`Cliente: ${cliente}\n`:``)+
     `\nValor propiedad: UF ${fmtUF(c.valorUF)}`+`\nPie: UF ${fmtUF(c.pieUF)}`+
+    (c.bonoUF>0?`\nBono pie: UF ${fmtUF(c.bonoUF)}\nPie efectivo: UF ${fmtUF(c.pieEfectivoUF)}`:``)+
     `\nCrédito: UF ${fmtUF(c.montoUF)}`+`\nTasa: ${c.tasaAnual}% · ${c.plazo} años`+
     `\n*Dividendo mensual: UF ${fmtUF(c.divTotalUF)} (${fmtCLP(c.divTotalUF*c.ufClp)})*`+
     `\nCAE referencial: ${c.cae.toFixed(2)}%`+
