@@ -76,6 +76,8 @@
   .breakdown .line{display:flex;justify-content:space-between;padding:4px 0}
   .breakdown .line.total{font-weight:600;border-top:1px solid var(--border);margin-top:6px;padding-top:9px;color:var(--copper-lt)}
   .section-title{font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.16em;color:var(--copper);margin:22px 0 9px}
+  .scen-note{display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(192,137,74,.12);border:1px solid var(--copper-dk);border-radius:9px;padding:9px 13px;margin-bottom:10px;font-size:.82rem;color:#e9dcc6}
+  .scen-note b{color:var(--copper-lt);font-weight:600}
   table.t{width:100%;border-collapse:collapse;font-size:.82rem}
   table.t th,table.t td{padding:8px;text-align:right;border-bottom:1px solid var(--border)}
   table.t th{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;font-weight:500}
@@ -283,6 +285,7 @@
     </div>
 
     <div class="section-title">Comparación de plazos</div>
+    <div class="scen-note" id="scenNote" style="display:none"></div>
     <table class="t" id="scenTable">
       <thead><tr><th>Plazo</th><th>Dividendo total</th><th>≈ CLP/mes</th><th>Costo total</th></tr></thead>
       <tbody></tbody>
@@ -431,6 +434,13 @@ function calc(){
     return {plazo:p,divTotalUF:s.divTotalUF,divCLP:s.divTotalUF*ufClp,totalUF:s.totalPagadoUF,sel:p===plazo}; });
   scen.sort((a,b)=> a.sel?-1 : b.sel?1 : a.plazo-b.plazo);
   c.scenarios=scen; renderScenarios(scen);
+
+  const note=$('scenNote');
+  if(bonoUF>0){
+    note.style.display='flex';
+    note.innerHTML=`<span>Todos los plazos incluyen <b>bono pie de UF ${fmtUF(bonoUF)}</b></span>`+
+                   `<span>Pie efectivo: <b>UF ${fmtUF(pieEfectivoUF)}</b></span>`;
+  } else { note.style.display='none'; }
 }
 
 function render(c){
@@ -548,8 +558,15 @@ function buildPDF(){
   y=doc.lastAutoTable.finalY+8;
 
   doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Comparación de plazos',14,y);
+  let scenY=y+2;
+  if(c.bonoUF>0){
+    doc.setFillColor(245,235,220); doc.roundedRect(14,y+3,W-28,9,2,2,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(156,106,52);
+    doc.text(`Todos los plazos incluyen bono pie de UF ${fmtUF(c.bonoUF)}  ·  Pie efectivo: UF ${fmtUF(c.pieEfectivoUF)}`,18,y+9);
+    doc.setTextColor(30,30,30); scenY=y+15;
+  }
   doc.autoTable({
-    startY:y+2, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
+    startY:scenY, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
     body:c.scenarios.map(s=>[`${s.plazo} años${s.sel?' ★':''}`,fmtUF(s.divTotalUF),fmtCLP(s.divCLP),fmtUF(s.totalUF)]),
     theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8.5},
     columnStyles:{0:{halign:'left'}},
