@@ -46,6 +46,14 @@
   .card .hint{color:var(--muted);font-size:.82rem;margin:0 0 18px}
   fieldset{border:none;padding:0;margin:0 0 20px}
   fieldset legend{font-size:.68rem;text-transform:uppercase;letter-spacing:.18em;color:var(--copper);font-weight:600;margin-bottom:11px;padding:0}
+  /* Secciones colapsables del formulario */
+  details.sect{border:1px solid var(--border);border-radius:10px;margin-bottom:11px;background:var(--field);overflow:hidden}
+  details.sect>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-size:.68rem;text-transform:uppercase;letter-spacing:.16em;color:var(--copper);font-weight:600;user-select:none}
+  details.sect>summary::-webkit-details-marker{display:none}
+  details.sect>summary::after{content:"▾";color:var(--muted);font-size:.82rem;transition:transform .2s}
+  details.sect[open]>summary::after{transform:rotate(180deg)}
+  details.sect[open]>summary{border-bottom:1px solid var(--border)}
+  details.sect .sect-body{padding:14px}
   .field{margin-bottom:12px}
   .field label{display:block;font-size:.8rem;font-weight:500;margin-bottom:5px;color:#cfcabf;letter-spacing:.01em}
   .field .sub{font-weight:300;color:var(--muted)}
@@ -137,8 +145,9 @@
     <h2>Parámetros de la cotización</h2>
     <p class="hint">Ajusta los valores. El cálculo se actualiza en tiempo real.</p>
 
-    <fieldset>
-      <legend>Propiedad y pie</legend>
+    <details class="sect" open>
+      <summary>Propiedad y pie</summary>
+      <div class="sect-body">
       <div class="field">
         <label>Valor de la propiedad <span class="sub">(UF)</span></label>
         <input type="number" id="valorUF" value="4000" min="0" step="50">
@@ -173,10 +182,12 @@
         <label>Bono pie <span class="sub">(% del valor)</span></label>
         <input type="number" id="bonoPiePct" value="0" min="0" max="100" step="1">
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Condiciones del crédito</legend>
+    <details class="sect" open>
+      <summary>Condiciones del crédito</summary>
+      <div class="sect-body">
       <div class="row">
         <div class="field">
           <label>Tasa de interés anual <span class="sub">(%)</span></label>
@@ -191,10 +202,12 @@
         <label>Plazos a comparar <span class="sub">(años, separados por coma)</span></label>
         <input type="text" id="plazosComparar" value="15, 20, 25, 30">
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Seguros</legend>
+    <details class="sect">
+      <summary>Seguros</summary>
+      <div class="sect-body">
       <div class="row">
         <div class="field">
           <label>Desgravamen <span class="sub">(% mensual s/ saldo)</span></label>
@@ -205,10 +218,12 @@
           <input type="number" id="segIncendio" value="0.2" min="0" step="0.05">
         </div>
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Gastos operacionales (referenciales)</legend>
+    <details class="sect">
+      <summary>Gastos operacionales (referenciales)</summary>
+      <div class="sect-body">
       <div class="row">
         <div class="field">
           <label>Tasación <span class="sub">(UF)</span></label>
@@ -229,18 +244,22 @@
           <input type="number" id="gImpuesto" value="0.2" min="0" step="0.05">
         </div>
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Conversión</legend>
+    <details class="sect">
+      <summary>Conversión</summary>
+      <div class="sect-body">
       <div class="field">
         <label>Valor de la UF <span class="sub">(CLP)</span></label>
         <input type="number" id="valorUFCLP" value="39000" min="0" step="100">
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Datos para el documento (opcional)</legend>
+    <details class="sect">
+      <summary>Datos para el documento (opcional)</summary>
+      <div class="sect-body">
       <div class="field">
         <label>Nombre del cliente</label>
         <input type="text" id="cliente" placeholder="Ej: Juan Pérez">
@@ -263,10 +282,12 @@
         <label>Empresa / inmobiliaria</label>
         <input type="text" id="empresa" value="Brouk" placeholder="Ej: Brouk">
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Unidad / Edificio (catálogo demo)</legend>
+    <details class="sect">
+      <summary>Unidad / Edificio (catálogo demo)</summary>
+      <div class="sect-body">
       <div class="field">
         <label>Seleccionar unidad del catálogo</label>
         <select id="unitSelect"></select>
@@ -275,10 +296,12 @@
         <label>Foto de la unidad <span class="sub">(del catálogo; puedes subir otra)</span></label>
         <input type="file" id="fotoInput" accept="image/png,image/jpeg">
       </div>
-    </fieldset>
+    </div>
+    </details>
 
-    <fieldset>
-      <legend>Documento (PDF)</legend>
+    <details class="sect">
+      <summary>Documento (PDF)</summary>
+      <div class="sect-body">
       <label class="check"><input type="checkbox" id="incluirUnidad" checked> Incluir ficha de la unidad en el PDF</label>
       <div class="field">
         <label>Subir logo <span class="sub">(PNG/JPG, para encabezado y PDF)</span></label>
@@ -288,7 +311,8 @@
       <label class="check"><input type="checkbox" id="incluirLogo" checked> Incluir logo en el PDF</label>
       <label class="check"><input type="checkbox" id="incluirBono" checked> Aplicar bono pie en la cotización <span class="sub" style="font-weight:400">(interno · no se detalla)</span></label>
       <label class="check"><input type="checkbox" id="incluirAmort"> Incluir tabla de amortización en la cotización</label>
-    </fieldset>
+    </div>
+    </details>
   </div>
 
   <!-- ====================== RESULTS ====================== -->
