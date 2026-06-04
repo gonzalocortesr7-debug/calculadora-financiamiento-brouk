@@ -60,6 +60,15 @@
   .check{display:flex;align-items:center;gap:9px;font-size:.84rem;font-weight:500;color:#cfcabf;cursor:pointer;margin-top:8px}
   .check input{width:auto;margin:0;accent-color:var(--copper)}
   .logo-prev{display:none;margin-top:10px;height:48px;border:1px solid var(--border);border-radius:8px;padding:6px;background:#0a0a0a}
+  /* Unit card */
+  .unit-card{display:flex;gap:14px;background:var(--field);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:18px}
+  .unit-card .unit-photo{width:150px;min-height:118px;object-fit:cover;flex:0 0 auto;background:#0a0a0a}
+  .unit-card .unit-info{padding:13px 14px 13px 0;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .unit-card .unit-title{font-size:1rem;font-weight:500;color:#fff;letter-spacing:.01em}
+  .unit-card .unit-sub{font-size:.78rem;color:var(--muted);margin-top:-4px}
+  .unit-card .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .unit-card .chip{font-size:.72rem;background:rgba(192,137,74,.13);border:1px solid var(--copper-dk);color:var(--copper-lt);padding:3px 9px;border-radius:999px;white-space:nowrap}
+  @media(max-width:480px){.unit-card{flex-direction:column}.unit-card .unit-photo{width:100%;height:150px}.unit-card .unit-info{padding:0 14px 14px}}
   /* ---- Results ---- */
   .result-hero{background:linear-gradient(135deg,#1a130a,#2a1d0d);border:1px solid var(--copper-dk);border-radius:14px;padding:24px;margin-bottom:18px;position:relative;overflow:hidden}
   .result-hero::after{content:"«";position:absolute;right:-6px;top:-30px;font-size:9rem;color:rgba(192,137,74,.10);font-weight:300}
@@ -248,13 +257,57 @@
     </fieldset>
 
     <fieldset>
+      <legend>Unidad / Edificio (placeholder)</legend>
+      <div class="field">
+        <label>Proyecto / Edificio</label>
+        <input type="text" id="uProyecto" value="Edificio Vista Parque">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Tipología</label>
+          <input type="text" id="uTipologia" value="2D + 2B">
+        </div>
+        <div class="field">
+          <label>N° unidad / Piso</label>
+          <input type="text" id="uPiso" value="Depto 1203 · Piso 12">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Sup. útil <span class="sub">(m²)</span></label>
+          <input type="number" id="uUtil" value="58" min="0" step="1">
+        </div>
+        <div class="field">
+          <label>Sup. terraza <span class="sub">(m²)</span></label>
+          <input type="number" id="uTerraza" value="8" min="0" step="1">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Orientación</label>
+          <input type="text" id="uOrientacion" value="Nororiente">
+        </div>
+        <div class="field">
+          <label>Estac. / Bodega</label>
+          <input type="text" id="uExtras" value="1 estac. + bodega">
+        </div>
+      </div>
+      <div class="field">
+        <label>Foto de la unidad <span class="sub">(placeholder aleatorio; puedes subir otra)</span></label>
+        <input type="file" id="fotoInput" accept="image/png,image/jpeg">
+      </div>
+    </fieldset>
+
+    <fieldset>
       <legend>Documento (PDF)</legend>
+      <label class="check"><input type="checkbox" id="incluirUnidad" checked> Incluir ficha de la unidad en el PDF</label>
       <div class="field">
         <label>Subir logo <span class="sub">(PNG/JPG, para encabezado y PDF)</span></label>
         <input type="file" id="logoInput" accept="image/png,image/jpeg">
         <img id="logoPreview" class="logo-prev" alt="vista previa logo">
       </div>
       <label class="check"><input type="checkbox" id="incluirLogo" checked> Incluir logo en el PDF</label>
+      <label class="check"><input type="checkbox" id="incluirBono" checked> Aplicar bono pie en la cotización <span class="sub" style="font-weight:400">(interno · no se detalla)</span></label>
       <label class="check"><input type="checkbox" id="incluirAmort"> Incluir tabla de amortización en la cotización</label>
     </fieldset>
   </div>
@@ -263,6 +316,15 @@
   <div class="card">
     <h2>Resultado referencial</h2>
     <p class="hint">Dividendo mensual estimado del plazo principal (incluye seguros).</p>
+
+    <div class="unit-card" id="unitCard">
+      <img id="unitPhoto" class="unit-photo" alt="Unidad">
+      <div class="unit-info">
+        <div class="unit-title" id="unitTitle">—</div>
+        <div class="unit-sub" id="unitSub">—</div>
+        <div class="chips" id="unitChips"></div>
+      </div>
+    </div>
 
     <div class="result-hero">
       <div class="lbl">Dividendo mensual total · <span id="heroPlazo">–</span> años</div>
@@ -336,6 +398,9 @@ const BRAND = {
   ink:[26,18,6],         // texto sobre cobre
 };
 let LOGO_DATAURL = null, LOGO_FORMAT = 'PNG', LOGO_AR = 1;
+let PHOTO_DATAURL = null, PHOTO_FORMAT = 'JPEG', PHOTO_AR = 1.5;
+// placeholder aleatorio de la unidad (departamento / edificio)
+const PHOTO_PLACEHOLDER = 'https://picsum.photos/seed/brouk-unidad/800/520';
 
 const $ = id => document.getElementById(id);
 const fmtUF = n => (n||0).toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -379,6 +444,50 @@ $('logoInput').addEventListener('change',e=>{
   };
   r.readAsDataURL(f);
 });
+
+// ---------- Foto de la unidad ----------
+function urlToDataURL(url, cb){
+  const img=new Image(); img.crossOrigin='anonymous';
+  img.onload=()=>{ try{
+    const cv=document.createElement('canvas'); cv.width=img.naturalWidth; cv.height=img.naturalHeight;
+    cv.getContext('2d').drawImage(img,0,0);
+    cb(cv.toDataURL('image/jpeg',0.85), img.naturalWidth/img.naturalHeight);
+  }catch(e){ cb(null, 1.5); } };
+  img.onerror=()=>cb(null,1.5);
+  img.src=url;
+}
+function loadPlaceholderPhoto(){
+  $('unitPhoto').src = PHOTO_PLACEHOLDER;            // preview en pantalla
+  urlToDataURL(PHOTO_PLACEHOLDER, (d,ar)=>{ if(d){ PHOTO_DATAURL=d; PHOTO_FORMAT='JPEG'; PHOTO_AR=ar; } });
+}
+$('fotoInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    PHOTO_DATAURL=ev.target.result;
+    PHOTO_FORMAT=/^data:image\/png/i.test(PHOTO_DATAURL)?'PNG':'JPEG';
+    const img=new Image(); img.onload=()=>{ if(img.naturalHeight) PHOTO_AR=img.naturalWidth/img.naturalHeight; };
+    img.src=PHOTO_DATAURL;
+    $('unitPhoto').src=PHOTO_DATAURL;
+  };
+  r.readAsDataURL(f);
+});
+
+function unitSpecs(){
+  const s=[];
+  const tip=$('uTipologia').value.trim(); if(tip) s.push(tip);
+  const util=$('uUtil').value.trim(); if(util) s.push(`${util} m² útiles`);
+  const ter=$('uTerraza').value.trim(); if(ter && +ter>0) s.push(`${ter} m² terraza`);
+  const ori=$('uOrientacion').value.trim(); if(ori) s.push(ori);
+  const ext=$('uExtras').value.trim(); if(ext) s.push(ext);
+  return s;
+}
+function renderUnit(){
+  $('unitTitle').textContent = $('uProyecto').value.trim() || 'Unidad';
+  $('unitSub').textContent = $('uPiso').value.trim() || '';
+  const chips=$('unitChips'); chips.innerHTML='';
+  unitSpecs().forEach(t=>{ const el=document.createElement('span'); el.className='chip'; el.textContent=t; chips.appendChild(el); });
+}
 
 function getPieUF(valorUF){
   let p=pieMode==='pct'?valorUF*(num('piePct')/100):num('pieUF');
@@ -426,7 +535,7 @@ function calc(){
   const bonoUF=getBonoUF(valorUF,pieUF), pieEfectivoUF=Math.max(0,pieUF-bonoUF);
   const c=compute(valorUF,pieUF,tasaAnual,plazo,desgPct,incPct,gUF);
   c.ufClp=ufClp; c.bonoUF=bonoUF; c.pieEfectivoUF=pieEfectivoUF;
-  lastCalc=c; render(c);
+  lastCalc=c; render(c); renderUnit();
 
   let plazos=$('plazosComparar').value.split(',').map(s=>parseInt(s.trim())).filter(p=>p>0);
   if(!plazos.includes(plazo)) plazos.push(plazo);
@@ -512,6 +621,26 @@ function buildPDF(){
   doc.text(new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'}),W-14,18,{align:'right'});
 
   let y=40; doc.setTextColor(30,30,30);
+
+  // Ficha de la unidad
+  if($('incluirUnidad').checked){
+    const proyecto=$('uProyecto').value.trim(), piso=$('uPiso').value.trim(), specs=unitSpecs();
+    const photoW=55, photoH=PHOTO_DATAURL?Math.min(photoW/(PHOTO_AR||1.5),40):0;
+    let infoX=14;
+    if(PHOTO_DATAURL){
+      try{ doc.addImage(PHOTO_DATAURL, PHOTO_FORMAT, 14, y, photoW, photoH); infoX=14+photoW+6; }catch(e){}
+    }
+    let ty=y+5;
+    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(30,30,30);
+    if(proyecto){ doc.text(proyecto, infoX, ty); ty+=5.5; }
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(95,95,95);
+    if(piso){ doc.text(piso, infoX, ty); ty+=6; }
+    doc.setFontSize(9); doc.setTextColor(60,60,60);
+    specs.forEach(s=>{ doc.text(`•  ${s}`, infoX, ty); ty+=4.8; });
+    y = Math.max(y+photoH, ty) + 9;
+    doc.setTextColor(30,30,30);
+  }
+
   if(cliente||propiedad){
     doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Datos de la cotización',14,y); y+=6;
     doc.setFont('helvetica','normal'); doc.setFontSize(10);
@@ -531,14 +660,12 @@ function buildPDF(){
   doc.text(`${fmtCLP(c.divTotalUF*c.ufClp)} / mes`,W-20,y+18,{align:'right'});
   y+=34; doc.setTextColor(30,30,30);
 
+  const aplicaBono = $('incluirBono').checked && c.bonoUF>0;
+  const pieShown = aplicaBono ? c.pieEfectivoUF : c.pieUF;
   const sumBody=[
     ['Valor de la propiedad', fmtUF(c.valorUF), fmtCLP(c.valorUF*c.ufClp)],
-    ['Pie', fmtUF(c.pieUF), fmtCLP(c.pieUF*c.ufClp)],
+    ['Pie', fmtUF(pieShown), fmtCLP(pieShown*c.ufClp)],
   ];
-  if(c.bonoUF>0){
-    sumBody.push(['Bono pie (aporte inmobiliaria)', '-'+fmtUF(c.bonoUF), '-'+fmtCLP(c.bonoUF*c.ufClp)]);
-    sumBody.push(['Pie efectivo (paga el cliente)', fmtUF(c.pieEfectivoUF), fmtCLP(c.pieEfectivoUF*c.ufClp)]);
-  }
   sumBody.push(
     ['Monto del crédito', fmtUF(c.montoUF), fmtCLP(c.montoUF*c.ufClp)],
     ['Tasa anual / Plazo', `${c.tasaAnual}%  ·  ${c.plazo} años (${c.n} cuotas)`, ''],
@@ -558,15 +685,8 @@ function buildPDF(){
   y=doc.lastAutoTable.finalY+8;
 
   doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Comparación de plazos',14,y);
-  let scenY=y+2;
-  if(c.bonoUF>0){
-    doc.setFillColor(245,235,220); doc.roundedRect(14,y+3,W-28,9,2,2,'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(156,106,52);
-    doc.text(`Todos los plazos incluyen bono pie de UF ${fmtUF(c.bonoUF)}  ·  Pie efectivo: UF ${fmtUF(c.pieEfectivoUF)}`,18,y+9);
-    doc.setTextColor(30,30,30); scenY=y+15;
-  }
   doc.autoTable({
-    startY:scenY, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
+    startY:y+2, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
     body:c.scenarios.map(s=>[`${s.plazo} años${s.sel?' ★':''}`,fmtUF(s.divTotalUF),fmtCLP(s.divCLP),fmtUF(s.totalUF)]),
     theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8.5},
     columnStyles:{0:{halign:'left'}},
@@ -616,9 +736,9 @@ async function shareWhatsApp(){
   const c=lastCalc; if(!c) return;
   const doc=buildPDF(); if(!doc) return;
   const empresa=$('empresa').value.trim()||BRAND.name, cliente=$('cliente').value.trim();
+  const pieWA = ($('incluirBono').checked && c.bonoUF>0) ? c.pieEfectivoUF : c.pieUF;
   const resumen=`*${empresa} · Cotización hipotecaria*\n`+(cliente?`Cliente: ${cliente}\n`:``)+
-    `\nValor propiedad: UF ${fmtUF(c.valorUF)}`+`\nPie: UF ${fmtUF(c.pieUF)}`+
-    (c.bonoUF>0?`\nBono pie: UF ${fmtUF(c.bonoUF)}\nPie efectivo: UF ${fmtUF(c.pieEfectivoUF)}`:``)+
+    `\nValor propiedad: UF ${fmtUF(c.valorUF)}`+`\nPie: UF ${fmtUF(pieWA)}`+
     `\nCrédito: UF ${fmtUF(c.montoUF)}`+`\nTasa: ${c.tasaAnual}% · ${c.plazo} años`+
     `\n*Dividendo mensual: UF ${fmtUF(c.divTotalUF)} (${fmtCLP(c.divTotalUF*c.ufClp)})*`+
     `\nCAE referencial: ${c.cae.toFixed(2)}%`+
@@ -638,6 +758,7 @@ document.querySelectorAll('input,select').forEach(el=>el.addEventListener('input
 $('pdfBtn').addEventListener('click',genPDF);
 $('printBtn').addEventListener('click',()=>window.print());
 $('waBtn').addEventListener('click',shareWhatsApp);
+loadPlaceholderPhoto();
 calc();
 </script>
 </body>
