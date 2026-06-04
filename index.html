@@ -69,6 +69,15 @@
   .unit-card .chips{display:flex;flex-wrap:wrap;gap:6px}
   .unit-card .chip{font-size:.72rem;background:rgba(192,137,74,.13);border:1px solid var(--copper-dk);color:var(--copper-lt);padding:3px 9px;border-radius:999px;white-space:nowrap}
   @media(max-width:480px){.unit-card{flex-direction:column}.unit-card .unit-photo{width:100%;height:150px}.unit-card .unit-info{padding:0 14px 14px}}
+  .unit-details{margin:-8px 0 18px;border:1px solid var(--border);border-radius:10px;background:var(--field);overflow:hidden}
+  .unit-details summary{cursor:pointer;font-size:.74rem;text-transform:uppercase;letter-spacing:.12em;color:var(--copper);font-weight:600;padding:11px 14px;list-style:none}
+  .unit-details summary::-webkit-details-marker{display:none}
+  .unit-details summary::after{content:"▾";float:right;color:var(--muted);transition:transform .2s}
+  .unit-details[open] summary::after{transform:rotate(180deg)}
+  .unit-data{padding:2px 14px 12px}
+  .unit-data .drow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:.85rem}
+  .unit-data .drow .dk{color:var(--muted)}
+  .unit-data .drow .dv{color:#e9e3d6;font-weight:500;text-align:right}
   /* ---- Results ---- */
   .result-hero{background:linear-gradient(135deg,#1a130a,#2a1d0d);border:1px solid var(--copper-dk);border-radius:14px;padding:24px;margin-bottom:18px;position:relative;overflow:hidden}
   .result-hero::after{content:"«";position:absolute;right:-6px;top:-30px;font-size:9rem;color:rgba(192,137,74,.10);font-weight:300}
@@ -263,44 +272,6 @@
         <select id="unitSelect"></select>
       </div>
       <div class="field">
-        <label>Proyecto / Edificio</label>
-        <input type="text" id="uProyecto" value="Edificio Vista Parque">
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Comuna</label>
-          <input type="text" id="uComuna" value="Ñuñoa">
-        </div>
-        <div class="field">
-          <label>Tipología</label>
-          <input type="text" id="uTipologia" value="2D + 2B">
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>N° unidad / Piso</label>
-          <input type="text" id="uPiso" value="Depto 1203 · Piso 12">
-        </div>
-        <div class="field">
-          <label>Orientación</label>
-          <input type="text" id="uOrientacion" value="Nororiente">
-        </div>
-      </div>
-      <div class="row">
-        <div class="field">
-          <label>Sup. útil <span class="sub">(m²)</span></label>
-          <input type="number" id="uUtil" value="58" min="0" step="1">
-        </div>
-        <div class="field">
-          <label>Sup. terraza <span class="sub">(m²)</span></label>
-          <input type="number" id="uTerraza" value="8" min="0" step="1">
-        </div>
-      </div>
-      <div class="field">
-        <label>Estac. / Bodega</label>
-        <input type="text" id="uExtras" value="1 estac. + bodega">
-      </div>
-      <div class="field">
         <label>Foto de la unidad <span class="sub">(del catálogo; puedes subir otra)</span></label>
         <input type="file" id="fotoInput" accept="image/png,image/jpeg">
       </div>
@@ -333,6 +304,10 @@
         <div class="chips" id="unitChips"></div>
       </div>
     </div>
+    <details class="unit-details" id="unitDetails">
+      <summary>Datos del departamento</summary>
+      <div class="unit-data" id="unitData"></div>
+    </details>
 
     <div class="result-hero">
       <div class="lbl">Dividendo mensual total · <span id="heroPlazo">–</span> años</div>
@@ -430,17 +405,18 @@ const CATALOG = [
    foto:'https://picsum.photos/seed/brouk-plazanorte/800/520'},
 ];
 
+let UNIT = {...CATALOG[0]};   // unidad activa (datos del depto, solo lectura en UI)
+
 function populateCatalog(){
   const sel=$('unitSelect');
-  sel.innerHTML='<option value="">— Personalizada / manual —</option>';
+  sel.innerHTML='';
   CATALOG.forEach((u,i)=>{ const o=document.createElement('option'); o.value=i;
     o.textContent=`${u.proyecto} · ${u.comuna} · ${u.tipologia} · UF ${u.valorUF.toLocaleString('es-CL')}`;
     sel.appendChild(o); });
   sel.addEventListener('change',()=>{
     const u=CATALOG[sel.value]; if(!u) return;
-    $('uProyecto').value=u.proyecto; $('uComuna').value=u.comuna; $('uTipologia').value=u.tipologia;
-    $('uPiso').value=u.piso; $('uUtil').value=u.util; $('uTerraza').value=u.terraza;
-    $('uOrientacion').value=u.orientacion; $('uExtras').value=u.extras; $('valorUF').value=u.valorUF;
+    UNIT={...u};
+    $('valorUF').value=u.valorUF;
     $('unitPhoto').src=u.foto;
     urlToDataURL(u.foto,(d,ar)=>{ if(d){ PHOTO_DATAURL=d; PHOTO_FORMAT='JPEG'; PHOTO_AR=ar; } });
     calc();
@@ -520,18 +496,31 @@ $('fotoInput').addEventListener('change',e=>{
 
 function unitSpecs(){
   const s=[];
-  const tip=$('uTipologia').value.trim(); if(tip) s.push(tip);
-  const util=$('uUtil').value.trim(); if(util) s.push(`${util} m² útiles`);
-  const ter=$('uTerraza').value.trim(); if(ter && +ter>0) s.push(`${ter} m² terraza`);
-  const ori=$('uOrientacion').value.trim(); if(ori) s.push(ori);
-  const ext=$('uExtras').value.trim(); if(ext) s.push(ext);
+  if(UNIT.tipologia) s.push(UNIT.tipologia);
+  if(UNIT.util) s.push(`${UNIT.util} m² útiles`);
+  if(UNIT.terraza && +UNIT.terraza>0) s.push(`${UNIT.terraza} m² terraza`);
+  if(UNIT.orientacion) s.push(UNIT.orientacion);
+  if(UNIT.extras) s.push(UNIT.extras);
   return s;
 }
 function renderUnit(){
-  $('unitTitle').textContent = $('uProyecto').value.trim() || 'Unidad';
-  $('unitSub').textContent = [$('uComuna').value.trim(), $('uPiso').value.trim()].filter(Boolean).join(' · ');
+  $('unitTitle').textContent = UNIT.proyecto || 'Unidad';
+  $('unitSub').textContent = [UNIT.comuna, UNIT.piso].filter(Boolean).join(' · ');
   const chips=$('unitChips'); chips.innerHTML='';
   unitSpecs().forEach(t=>{ const el=document.createElement('span'); el.className='chip'; el.textContent=t; chips.appendChild(el); });
+  // datos del departamento (replegados, solo lectura)
+  const rows=[
+    ['Proyecto / Edificio', UNIT.proyecto],
+    ['Comuna', UNIT.comuna],
+    ['Tipología', UNIT.tipologia],
+    ['N° unidad / Piso', UNIT.piso],
+    ['Superficie útil', UNIT.util?`${UNIT.util} m²`:''],
+    ['Superficie terraza', (UNIT.terraza&&+UNIT.terraza>0)?`${UNIT.terraza} m²`:''],
+    ['Orientación', UNIT.orientacion],
+    ['Estacionamiento / Bodega', UNIT.extras],
+    ['Valor referencial', `UF ${fmtUF(UNIT.valorUF)} · ${fmtCLP(UNIT.valorUF*num('valorUFCLP'))}`],
+  ].filter(r=>r[1]);
+  $('unitData').innerHTML = rows.map(r=>`<div class="drow"><span class="dk">${r[0]}</span><span class="dv">${r[1]}</span></div>`).join('');
 }
 
 function getPieUF(valorUF){
@@ -665,46 +654,46 @@ function buildPDF(){
   doc.text('Cotización hipotecaria referencial',W-14,12,{align:'right'});
   doc.text(new Date().toLocaleDateString('es-CL',{day:'2-digit',month:'long',year:'numeric'}),W-14,18,{align:'right'});
 
-  let y=40; doc.setTextColor(30,30,30);
+  let y=38; doc.setTextColor(30,30,30);
 
   // Ficha de la unidad
   if($('incluirUnidad').checked){
-    const proyecto=$('uProyecto').value.trim(), specs=unitSpecs();
-    const line2=[$('uComuna').value.trim(), $('uPiso').value.trim()].filter(Boolean).join(' · ');
-    const photoW=55, photoH=PHOTO_DATAURL?Math.min(photoW/(PHOTO_AR||1.5),40):0;
+    const proyecto=(UNIT.proyecto||'').trim(), specs=unitSpecs();
+    const line2=[UNIT.comuna, UNIT.piso].filter(Boolean).join(' · ');
+    const photoW=48, photoH=PHOTO_DATAURL?Math.min(photoW/(PHOTO_AR||1.5),30):0;
     let infoX=14;
     if(PHOTO_DATAURL){
       try{ doc.addImage(PHOTO_DATAURL, PHOTO_FORMAT, 14, y, photoW, photoH); infoX=14+photoW+6; }catch(e){}
     }
-    let ty=y+5;
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(30,30,30);
-    if(proyecto){ doc.text(proyecto, infoX, ty); ty+=5.5; }
-    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(95,95,95);
-    if(line2){ doc.text(line2, infoX, ty); ty+=6; }
-    doc.setFontSize(9); doc.setTextColor(60,60,60);
-    specs.forEach(s=>{ doc.text(`•  ${s}`, infoX, ty); ty+=4.8; });
-    y = Math.max(y+photoH, ty) + 9;
+    let ty=y+4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(30,30,30);
+    if(proyecto){ doc.text(proyecto, infoX, ty); ty+=5; }
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(95,95,95);
+    if(line2){ doc.text(line2, infoX, ty); ty+=5.5; }
+    doc.setFontSize(8.5); doc.setTextColor(70,70,70);
+    specs.forEach(s=>{ doc.text(`•  ${s}`, infoX, ty); ty+=4.3; });
+    y = Math.max(y+photoH, ty) + 6;
     doc.setTextColor(30,30,30);
   }
 
   if(cliente||propiedad){
-    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Datos de la cotización',14,y); y+=6;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    if(cliente){ doc.text(`Cliente: ${cliente}`,14,y); y+=5.5; }
-    if(propiedad){ const l=doc.splitTextToSize(`Propiedad: ${propiedad}`,W-28); doc.text(l,14,y); y+=5.5*l.length; }
-    y+=3;
+    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('Datos de la cotización',14,y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+    if(cliente){ doc.text(`Cliente: ${cliente}`,14,y); y+=5; }
+    if(propiedad){ const l=doc.splitTextToSize(`Propiedad: ${propiedad}`,W-28); doc.text(l,14,y); y+=5*l.length; }
+    y+=2;
   }
 
   // Hero cobre
-  doc.setFillColor(...copper); doc.roundedRect(14,y,W-28,24,3,3,'F');
+  doc.setFillColor(...copper); doc.roundedRect(14,y,W-28,19,3,3,'F');
   doc.setTextColor(...BRAND.ink);
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  doc.text(`DIVIDENDO MENSUAL TOTAL · ${c.plazo} AÑOS`,20,y+8);
-  doc.setFont('helvetica','bold'); doc.setFontSize(20);
-  doc.text(`UF ${fmtUF(c.divTotalUF)}`,20,y+18);
-  doc.setFont('helvetica','normal'); doc.setFontSize(11);
-  doc.text(`${fmtCLP(c.divTotalUF*c.ufClp)} / mes`,W-20,y+18,{align:'right'});
-  y+=34; doc.setTextColor(30,30,30);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+  doc.text(`DIVIDENDO MENSUAL TOTAL · ${c.plazo} AÑOS`,20,y+7);
+  doc.setFont('helvetica','bold'); doc.setFontSize(17);
+  doc.text(`UF ${fmtUF(c.divTotalUF)}`,20,y+15.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10.5);
+  doc.text(`${fmtCLP(c.divTotalUF*c.ufClp)} / mes`,W-20,y+14,{align:'right'});
+  y+=25; doc.setTextColor(30,30,30);
 
   const aplicaBono = $('incluirBono').checked && c.bonoUF>0;
   const pieShown = aplicaBono ? c.pieEfectivoUF : c.pieUF;
@@ -724,22 +713,22 @@ function buildPDF(){
   );
   doc.autoTable({
     startY:y, head:[['Concepto','UF','CLP']], body:sumBody,
-    theme:'striped', headStyles:{fillColor:dark,textColor:255,halign:'right'},
+    theme:'striped', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8.2},
     columnStyles:{0:{halign:'left',fontStyle:'bold'},1:{halign:'right'},2:{halign:'right'}},
-    styles:{fontSize:9,cellPadding:2.4}, margin:{left:14,right:14},
+    styles:{fontSize:8.2,cellPadding:1.7}, margin:{left:14,right:14},
   });
-  y=doc.lastAutoTable.finalY+8;
+  y=doc.lastAutoTable.finalY+5;
 
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('Comparación de plazos',14,y);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text('Comparación de plazos',14,y);
   doc.autoTable({
     startY:y+2, head:[['Plazo','Dividendo total (UF)','≈ CLP/mes','Costo total (UF)']],
     body:c.scenarios.map(s=>[`${s.plazo} años${s.sel?' ★':''}`,fmtUF(s.divTotalUF),fmtCLP(s.divCLP),fmtUF(s.totalUF)]),
-    theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8.5},
+    theme:'grid', headStyles:{fillColor:dark,textColor:255,halign:'right',fontSize:8},
     columnStyles:{0:{halign:'left'}},
     didParseCell:d=>{ if(d.row.section==='body'&&c.scenarios[d.row.index].sel){ d.cell.styles.fillColor=[245,235,220]; d.cell.styles.fontStyle='bold'; } },
-    styles:{fontSize:8.5,cellPadding:2,halign:'right'}, margin:{left:14,right:14},
+    styles:{fontSize:8,cellPadding:1.6,halign:'right'}, margin:{left:14,right:14},
   });
-  y=doc.lastAutoTable.finalY+8;
+  y=doc.lastAutoTable.finalY+6;
 
   // Amortización anual — solo si se marca
   if($('incluirAmort').checked){
